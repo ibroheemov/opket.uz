@@ -27,7 +27,7 @@ const RideCard: React.FC<{ ride?: RideModel | null, refetchPassenger: () => Prom
             setLoading(true);
             const numericAmount = Number(amount.replace(/\s/g, ""));
 
-            const data = await payFare(chatId, ride?.driverId, numericAmount);
+            await payFare(chatId, ride?.driverId, numericAmount);
 
             toast.success("To‘lov muvaffaqiyatli amalga oshirildi!");
 

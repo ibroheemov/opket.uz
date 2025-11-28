@@ -1,5 +1,5 @@
 export async function payFare(chatId: number, driverId: string, amount: number) {
-    const res = await fetch(` https://aliya-archegonial-toccara.ngrok-free.dev/user/${chatId}/pay-fare`, {
+    const res = await fetch(`http://157.180.85.173:3000/user/${chatId}/pay-fare`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"

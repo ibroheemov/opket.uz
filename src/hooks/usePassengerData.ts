@@ -4,7 +4,7 @@ import axios from "axios";
 
 
 
-const API_BASE = "https://aliya-archegonial-toccara.ngrok-free.dev";
+const API_BASE = "http://157.180.85.173:3000";
 
 export function usePassengerData(chatId?: number) {
     const [passenger, setPassenger] = useState<any>(null);

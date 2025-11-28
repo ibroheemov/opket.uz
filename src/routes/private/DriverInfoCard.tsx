@@ -1,7 +1,4 @@
 import type { DriverInfo } from "../../types/driver";
-import type { RideModel } from "../../types/ride";
-
-
 
 const DriverInfoCard: React.FC<{ driver: DriverInfo }> = ({ driver }) => (
     <div className="p-4 rounded-xl bg-black/20 border border-white/10 flex items-center gap-4">
