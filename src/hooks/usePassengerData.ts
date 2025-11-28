@@ -4,7 +4,7 @@ import axios from "axios";
 
 
 
-const API_BASE = "http://157.180.85.173:3000";
+const API_BASE = "https://opketme.uz/api";
 
 export function usePassengerData(chatId?: number) {
     const [passenger, setPassenger] = useState<any>(null);
