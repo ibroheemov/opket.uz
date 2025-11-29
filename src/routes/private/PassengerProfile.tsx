@@ -9,7 +9,7 @@ import { RideCardSkeleton } from "../../components/cards/RideCardSkeleton";
 const UserBalanceScreen: React.FC<{}> = () => {
     const telegramUser = useTelegramUser();
 
-    const { passenger, ride, loading, refetch } = usePassengerData(telegramUser?.id ?? 7175509887);
+    const { passenger, ride, loading, refetch } = usePassengerData(telegramUser?.id);
 
     return (
         <div className="w-full max-w-md mx-auto p-4 space-y-4">

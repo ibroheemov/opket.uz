@@ -16,7 +16,7 @@ const RideCard: React.FC<{ ride?: RideModel | null, refetchPassenger: () => Prom
     const [loading, setLoading] = useState(false);
 
     const telegramUser = useTelegramUser();
-    const chatId = telegramUser?.id ?? 7175509887;
+    const chatId = telegramUser?.id;
 
     const pay = async () => {
         if (!chatId) return toast.error("Telegram user not found");
