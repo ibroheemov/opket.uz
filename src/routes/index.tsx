@@ -3,10 +3,25 @@ import DriverDashboard from "./private/DriverDashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import type { AppRoute } from "../types/route";
 import PassengerProfile from "./private/PassengerProfile";
+import DownloadRedirect from "../pages/DownloadRedirect";
+import Landing from "../pages/Landing";
 
-export const routes: AppRoute[] = [
+/** Public routes — rendered without ThemeProvider / Telegram SDK */
+export const publicRoutes: AppRoute[] = [
     {
         path: "/",
+        element: <Landing />,
+    },
+    {
+        path: "/download",
+        element: <DownloadRedirect />,
+    },
+];
+
+/** Telegram mini-app routes — wrapped in ThemeProvider */
+export const appRoutes: AppRoute[] = [
+    {
+        path: "/app",
         element: <PassengerProfile />,
     },
     {
@@ -19,11 +34,6 @@ export const routes: AppRoute[] = [
     },
     {
         path: "/taxometer",
-        // element: (
-        //     <ProtectedRoute>
-        //         <Taxometer />
-        //     </ProtectedRoute>
-        // ),
         element: (
             <Taxometer />
         ),
