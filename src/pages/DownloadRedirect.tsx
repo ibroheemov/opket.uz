@@ -12,7 +12,7 @@ function detectPlatform(): Platform {
 }
 
 const STORE_URLS: Record<Platform, string> = {
-    ios: "https://daryo.uz",
+    ios: "https://apps.apple.com/us/app/opket-taxi/id6759873649",
     android: "https://play.google.com/store/apps/details?id=com.saabiqoon.tasbeeh",
     unknown: "https://kun.uz",
 };
