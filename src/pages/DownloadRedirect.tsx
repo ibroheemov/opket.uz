@@ -21,25 +21,31 @@ const STORE_URLS: Record<Platform, string> = {
 export default function DownloadRedirect() {
     const [platform, setPlatform] = useState<Platform | null>(null);
     const linkRef = useRef<HTMLAnchorElement>(null);
+    const didRedirect = useRef(false);
 
     useEffect(() => {
+        if (didRedirect.current) return;
+        didRedirect.current = true;
+
         const detected = detectPlatform();
         setPlatform(detected);
         const url = STORE_URLS[detected];
 
+        // First try a history-replacing navigation
         window.location.replace(url);
 
-        const t1 = setTimeout(() => {
-            window.location.href = url;
+        // Fallbacks for browsers that ignore replace()
+        const t1 = window.setTimeout(() => {
+            window.location.assign(url);
         }, 300);
 
-        const t2 = setTimeout(() => {
+        const t2 = window.setTimeout(() => {
             linkRef.current?.click();
         }, 800);
 
         return () => {
-            clearTimeout(t1);
-            clearTimeout(t2);
+            window.clearTimeout(t1);
+            window.clearTimeout(t2);
         };
     }, []);
 

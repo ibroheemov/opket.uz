@@ -37,8 +37,8 @@ function useScrollReveal() {
   return ref;
 }
 
-const PLAY_STORE = "https://kun.uz";
-const APP_STORE = "https://daryo.uz";
+const PLAY_STORE = "https://play.google.com/store/apps/details?id=com.saabiqoon.tasbeeh";
+const APP_STORE = "https://apps.apple.com/us/app/opket-taxi/id6759873649";
 
 const features = [
   { icon: Clock, title: "Tez xizmat", desc: "Eng yaqin haydovchi bir necha daqiqada yetib keladi. Vaqtingizni tejang." },
