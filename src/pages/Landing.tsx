@@ -9,7 +9,6 @@ import {
   MapPin,
   Car,
   Phone,
-  Mail,
   ChevronDown,
   Users,
   Star,
