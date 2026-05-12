@@ -14,6 +14,7 @@ import {
   Users,
   Star,
   Zap,
+  Send
 } from "lucide-react";
 
 function useScrollReveal() {
@@ -296,12 +297,12 @@ export default function Landing() {
             <div>
               <h4 className="font-semibold text-sm tracking-wider uppercase mb-4 text-opket-light">Bog'lanish</h4>
               <div className="flex flex-col gap-3">
-                <a href="tel:+998901234567" className="footer-link inline-flex items-center gap-2">
+                <a href="tel:+998991093414" className="footer-link inline-flex items-center gap-2">
                   <Phone className="w-4 h-4" />
-                  +998 90 123 45 67
+                  +998 99 109 34 14
                 </a>
-                <a href="mailto:info@opket.uz" className="footer-link inline-flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
+                <a href="t.me/dadakhonov" className="footer-link inline-flex items-center gap-2">
+                  <Send className="w-4 h-4" />
                   info@opket.uz
                 </a>
               </div>
