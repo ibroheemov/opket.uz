@@ -16,6 +16,10 @@ export const publicRoutes: AppRoute[] = [
         path: "/download",
         element: <DownloadRedirect />,
     },
+    {
+        path: "/support",
+        element: <DownloadRedirect />,
+    },
 ];
 
 /** Telegram mini-app routes — wrapped in ThemeProvider */
