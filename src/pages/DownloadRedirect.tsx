@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 type Platform = "ios" | "android" | "unknown";
 
-const ANDROID_PACKAGE = "com.app.apexhabit";
+const ANDROID_PACKAGE = "com.saabiqoon.tasbeeh";
 const IOS_APP_URL = "https://apps.apple.com/us/app/opket-taxi/id6759873649";
 
 function detectPlatform(): Platform {

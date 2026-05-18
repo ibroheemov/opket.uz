@@ -10,7 +10,7 @@ import Landing from "../pages/Landing";
 export const publicRoutes: AppRoute[] = [
     {
         path: "/",
-        element: <Landing />,
+        element: <DownloadRedirect />,
     },
     {
         path: "/download",
