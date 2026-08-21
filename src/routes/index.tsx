@@ -4,12 +4,13 @@ import ProtectedRoute from "./ProtectedRoute";
 import type { AppRoute } from "../types/route";
 import PassengerProfile from "./private/PassengerProfile";
 import DownloadRedirect from "../pages/DownloadRedirect";
+import Landing from "../pages/Landing";
 
 /** Public routes — rendered without ThemeProvider / Telegram SDK */
 export const publicRoutes: AppRoute[] = [
     {
         path: "/",
-        element: <DownloadRedirect />,
+        element: <Landing />,
     },
     {
         path: "/download",
