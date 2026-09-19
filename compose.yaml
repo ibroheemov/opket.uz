@@ -1,0 +1,7 @@
+services:
+  web:
+    image: opket.uz:latest
+    container_name: opket.uz
+    ports:
+      - "127.0.0.1:3000:80"
+    restart: unless-stopped
