@@ -21,3 +21,10 @@ jobs:
             git pull origin main
             docker build -t opket.uz:latest .
             docker compose up -d
+            echo "Checking container status..."
+            docker compose ps
+
+            echo "Checking application..."
+            curl -f http://127.0.0.1:3000
+
+            echo "Deployment verification successful!"
