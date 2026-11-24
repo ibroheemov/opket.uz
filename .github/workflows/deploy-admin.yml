@@ -8,7 +8,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Deploy to VPS
+      - name: Check out admin panel
+        uses: actions/checkout@v4
+        with:
+          repository: ibroheemov/opket-admin-frontend
+          ref: main
+          path: admin-panel
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: admin-panel/package-lock.json
+
+      - name: Build admin panel
+        working-directory: admin-panel
+        run: npm ci && npm run build
+
+      - name: Prepare admin web root
         uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -16,33 +35,35 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
-
-            if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
-              echo "Docker Engine and Compose are required on the VPS." >&2
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "This deploy setup requires a Debian/Ubuntu server with apt-get." >&2
               exit 1
             fi
-
             if ! command -v nginx >/dev/null 2>&1 || ! command -v certbot >/dev/null 2>&1; then
               apt-get update
               DEBIAN_FRONTEND=noninteractive apt-get install -y nginx certbot python3-certbot-nginx
             fi
+            mkdir -p /var/www/admin.opketme.uz
 
-            if [ ! -d /opt/apps/opket-admin-panel/.git ]; then
-              if [ -e /opt/apps/opket-admin-panel ]; then
-                echo "The admin app path exists but is not a Git checkout; refusing to overwrite it." >&2
-                exit 1
-              fi
-              mkdir -p /opt/apps
-              git clone --branch main --depth 1 https://github.com/ibroheemov/opket-admin-frontend.git /opt/apps/opket-admin-panel
-            fi
+      - name: Upload built admin panel
+        uses: appleboy/scp-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: admin-panel/dist/*
+          target: /var/www/admin.opketme.uz
+          strip_components: 2
+          overwrite: true
 
-            cd /opt/apps/opket-admin-panel
-            git pull --ff-only origin main
-            docker build -t opket-admin-panel:latest .
-            docker compose up -d
-
-            curl -fsS -o /dev/null http://127.0.0.1:3001
-
+      - name: Configure Nginx and HTTPS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
             site_file=/etc/nginx/sites-available/admin.opketme.uz
             enabled_file=/etc/nginx/sites-enabled/admin.opketme.uz
             if [ ! -e "$site_file" ]; then
@@ -50,18 +71,15 @@ jobs:
             server {
               listen 80;
               server_name admin.opketme.uz;
+              root /var/www/admin.opketme.uz;
+              index index.html;
 
               location / {
-                proxy_pass http://127.0.0.1:3001;
-                proxy_http_version 1.1;
-                proxy_set_header Host $host;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-                proxy_set_header X-Forwarded-Proto $scheme;
+                try_files $uri $uri/ /index.html;
               }
             }
             NGINX
-            elif ! grep -Fq 'proxy_pass http://127.0.0.1:3001;' "$site_file"; then
+            elif ! grep -Fq 'root /var/www/admin.opketme.uz;' "$site_file"; then
               echo "Found an existing Nginx site config for admin.opketme.uz; refusing to overwrite it." >&2
               exit 1
             fi
@@ -86,6 +104,11 @@ jobs:
             nginx -t
             systemctl enable --now nginx
             systemctl reload nginx
+
+            if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; then
+              ufw allow 80/tcp
+              ufw allow 443/tcp
+            fi
 
             if [ ! -f /etc/letsencrypt/live/admin.opketme.uz/fullchain.pem ]; then
               certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d admin.opketme.uz
