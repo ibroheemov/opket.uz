@@ -116,6 +116,76 @@ jobs:
               certbot renew --quiet
             fi
 
+            install -d -m 755 /etc/nginx/snippets
+            cat > /etc/nginx/snippets/admin-opketme-api.conf <<'NGINX'
+            location = /api {
+              proxy_pass http://127.0.0.1:4001/;
+              proxy_http_version 1.1;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /api/ {
+              proxy_pass http://127.0.0.1:4001/;
+              proxy_http_version 1.1;
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+            }
+
+            location /socket.io/ {
+              proxy_pass http://127.0.0.1:4001/socket.io/;
+              proxy_http_version 1.1;
+              proxy_set_header Upgrade $http_upgrade;
+              proxy_set_header Connection "upgrade";
+              proxy_set_header Host $host;
+              proxy_set_header X-Real-IP $remote_addr;
+              proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header X-Forwarded-Proto $scheme;
+              proxy_read_timeout 3600s;
+              proxy_buffering off;
+            }
+            NGINX
+
+            python3 - <<'PY'
+            from pathlib import Path
+            import re
+
+            path = Path("/etc/nginx/sites-available/admin.opketme.uz")
+            text = path.read_text()
+            include_line = "  include /etc/nginx/snippets/admin-opketme-api.conf;"
+            if include_line not in text:
+                for match in re.finditer(r"(?m)^server\s*\{", text):
+                    opening = text.find("{", match.start())
+                    depth = 0
+                    closing = None
+                    for index in range(opening, len(text)):
+                        if text[index] == "{":
+                            depth += 1
+                        elif text[index] == "}":
+                            depth -= 1
+                            if depth == 0:
+                                closing = index + 1
+                                break
+                    if closing is None:
+                        raise SystemExit("Unclosed Nginx server block.")
+                    block = text[match.start():closing]
+                    if "server_name admin.opketme.uz;" not in block or not re.search(r"(?m)^\s*listen\s+443\s+ssl(?:\s|;)", block):
+                        continue
+                    location = re.search(r"(?m)^\s*location\s+/\s*\{", block)
+                    if location is None:
+                        raise SystemExit("HTTPS vhost has no SPA location.")
+                    block = block[:location.start()] + include_line + "\n" + block[location.start():]
+                    text = text[:match.start()] + block + text[closing:]
+                    break
+                else:
+                    raise SystemExit("Could not find the HTTPS vhost for admin.opketme.uz.")
+                path.write_text(text)
+
             nginx -t
             systemctl reload nginx
             curl -fsS -o /dev/null https://admin.opketme.uz/
+            curl -fsS -o /dev/null https://admin.opketme.uz/api/public/app-version-config/passenger
