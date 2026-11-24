@@ -26,6 +26,67 @@ jobs:
             docker compose ps
 
             echo "Checking application..."
-            curl -f http://127.0.0.1:3000
+            curl -fsS -o /dev/null http://127.0.0.1:3000
+
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "This deploy setup requires a Debian/Ubuntu server with apt-get." >&2
+              exit 1
+            fi
+
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get install -y nginx certbot python3-certbot-nginx
+
+            site_file=/etc/nginx/sites-available/opket.uz
+            enabled_file=/etc/nginx/sites-enabled/opket.uz
+            if [ ! -e "$site_file" ]; then
+              cat > "$site_file" <<'NGINX'
+            server {
+              listen 80;
+              server_name opket.uz;
+
+              location / {
+                proxy_pass http://127.0.0.1:3000;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              }
+            }
+            NGINX
+            elif ! grep -Fq 'proxy_pass http://127.0.0.1:3000;' "$site_file"; then
+              echo "Found an existing Nginx site config for opket.uz; refusing to overwrite it." >&2
+              exit 1
+            fi
+
+            if [ -L "$enabled_file" ]; then
+              if [ "$(readlink -f "$enabled_file")" != "$site_file" ]; then
+                echo "Found a conflicting Nginx site symlink for opket.uz." >&2
+                exit 1
+              fi
+            elif [ -e "$enabled_file" ]; then
+              echo "Found an existing Nginx site entry for opket.uz; refusing to overwrite it." >&2
+              exit 1
+            else
+              ln -s "$site_file" "$enabled_file"
+            fi
+
+            if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; then
+              ufw allow 80/tcp
+              ufw allow 443/tcp
+            fi
+
+            nginx -t
+            systemctl enable --now nginx
+
+            if [ ! -f /etc/letsencrypt/live/opket.uz/fullchain.pem ]; then
+              certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d opket.uz
+            else
+              certbot renew --quiet
+            fi
+
+            nginx -t
+            systemctl reload nginx
+            curl -fsS -o /dev/null https://opket.uz/
 
             echo "Deployment verification successful!"
