@@ -47,13 +47,32 @@ jobs:
             echo "Checking application..."
             curl -fsS -o /dev/null http://127.0.0.1:3000
 
-            site_file=/etc/nginx/sites-available/opket.uz
-            enabled_file=/etc/nginx/sites-enabled/opket.uz
+            legacy_site_file=/etc/nginx/sites-available/opket.uz
+            legacy_enabled_file=/etc/nginx/sites-enabled/opket.uz
+            if [ -e "$legacy_enabled_file" ]; then
+              if [ -L "$legacy_enabled_file" ] && [ "$(readlink -f "$legacy_enabled_file")" = "$legacy_site_file" ]; then
+                rm "$legacy_enabled_file"
+              else
+                echo "Found a conflicting old Nginx site entry for opket.uz." >&2
+                exit 1
+              fi
+            fi
+            if [ -e "$legacy_site_file" ]; then
+              if grep -Fq 'server_name opket.uz;' "$legacy_site_file" && grep -Fq 'proxy_pass http://127.0.0.1:3000;' "$legacy_site_file"; then
+                rm "$legacy_site_file"
+              else
+                echo "Found an unrelated Nginx site config for opket.uz; refusing to remove it." >&2
+                exit 1
+              fi
+            fi
+
+            site_file=/etc/nginx/sites-available/opketme.uz
+            enabled_file=/etc/nginx/sites-enabled/opketme.uz
             if [ ! -e "$site_file" ]; then
               cat > "$site_file" <<'NGINX'
             server {
               listen 80;
-              server_name opket.uz;
+              server_name opketme.uz;
 
               location / {
                 proxy_pass http://127.0.0.1:3000;
@@ -66,17 +85,17 @@ jobs:
             }
             NGINX
             elif ! grep -Fq 'proxy_pass http://127.0.0.1:3000;' "$site_file"; then
-              echo "Found an existing Nginx site config for opket.uz; refusing to overwrite it." >&2
+              echo "Found an existing Nginx site config for opketme.uz; refusing to overwrite it." >&2
               exit 1
             fi
 
             if [ -L "$enabled_file" ]; then
               if [ "$(readlink -f "$enabled_file")" != "$site_file" ]; then
-                echo "Found a conflicting Nginx site symlink for opket.uz." >&2
+                echo "Found a conflicting Nginx site symlink for opketme.uz." >&2
                 exit 1
               fi
             elif [ -e "$enabled_file" ]; then
-              echo "Found an existing Nginx site entry for opket.uz; refusing to overwrite it." >&2
+              echo "Found an existing Nginx site entry for opketme.uz; refusing to overwrite it." >&2
               exit 1
             else
               ln -s "$site_file" "$enabled_file"
@@ -89,15 +108,16 @@ jobs:
 
             nginx -t
             systemctl enable --now nginx
+            systemctl reload nginx
 
-            if [ ! -f /etc/letsencrypt/live/opket.uz/fullchain.pem ]; then
-              certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d opket.uz
+            if [ ! -f /etc/letsencrypt/live/opketme.uz/fullchain.pem ]; then
+              certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d opketme.uz
             else
               certbot renew --quiet
             fi
 
             nginx -t
             systemctl reload nginx
-            curl -fsS -o /dev/null https://opket.uz/
+            curl -fsS -o /dev/null https://opketme.uz/
 
             echo "Deployment verification successful!"
