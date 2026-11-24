@@ -1,0 +1,98 @@
+name: Deploy admin panel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.2
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+              echo "Docker Engine and Compose are required on the VPS." >&2
+              exit 1
+            fi
+
+            if ! command -v nginx >/dev/null 2>&1 || ! command -v certbot >/dev/null 2>&1; then
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y nginx certbot python3-certbot-nginx
+            fi
+
+            if [ ! -d /opt/apps/opket-admin-panel/.git ]; then
+              if [ -e /opt/apps/opket-admin-panel ]; then
+                echo "The admin app path exists but is not a Git checkout; refusing to overwrite it." >&2
+                exit 1
+              fi
+              mkdir -p /opt/apps
+              git clone --branch main --depth 1 https://github.com/ibroheemov/opket-admin-frontend.git /opt/apps/opket-admin-panel
+            fi
+
+            cd /opt/apps/opket-admin-panel
+            git pull --ff-only origin main
+            docker build -t opket-admin-panel:latest .
+            docker compose up -d
+
+            curl -fsS -o /dev/null http://127.0.0.1:3001
+
+            site_file=/etc/nginx/sites-available/admin.opketme.uz
+            enabled_file=/etc/nginx/sites-enabled/admin.opketme.uz
+            if [ ! -e "$site_file" ]; then
+              cat > "$site_file" <<'NGINX'
+            server {
+              listen 80;
+              server_name admin.opketme.uz;
+
+              location / {
+                proxy_pass http://127.0.0.1:3001;
+                proxy_http_version 1.1;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+              }
+            }
+            NGINX
+            elif ! grep -Fq 'proxy_pass http://127.0.0.1:3001;' "$site_file"; then
+              echo "Found an existing Nginx site config for admin.opketme.uz; refusing to overwrite it." >&2
+              exit 1
+            fi
+
+            if [ -L "$enabled_file" ]; then
+              if [ "$(readlink -f "$enabled_file")" != "$site_file" ]; then
+                echo "Found a conflicting Nginx site symlink for admin.opketme.uz." >&2
+                exit 1
+              fi
+            elif [ -e "$enabled_file" ]; then
+              echo "Found an existing Nginx site entry for admin.opketme.uz; refusing to overwrite it." >&2
+              exit 1
+            else
+              ln -s "$site_file" "$enabled_file"
+            fi
+
+            if command -v ufw >/dev/null 2>&1 && ufw status | grep -q '^Status: active'; then
+              ufw allow 80/tcp
+              ufw allow 443/tcp
+            fi
+
+            nginx -t
+            systemctl enable --now nginx
+            systemctl reload nginx
+
+            if [ ! -f /etc/letsencrypt/live/admin.opketme.uz/fullchain.pem ]; then
+              certbot --nginx --non-interactive --agree-tos --register-unsafely-without-email --redirect -d admin.opketme.uz
+            else
+              certbot renew --quiet
+            fi
+
+            nginx -t
+            systemctl reload nginx
+            curl -fsS -o /dev/null https://admin.opketme.uz/
