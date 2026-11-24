@@ -184,6 +184,7 @@ jobs:
                 else:
                     raise SystemExit("Could not find the HTTPS vhost for opketme.uz.")
                 path.write_text(text)
+            PY
 
             nginx -t
             systemctl reload nginx
