@@ -19,6 +19,16 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             set -e
+            if ! command -v apt-get >/dev/null 2>&1; then
+              echo "This deploy setup requires a Debian/Ubuntu server with apt-get." >&2
+              exit 1
+            fi
+            if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1 || ! command -v nginx >/dev/null 2>&1 || ! command -v certbot >/dev/null 2>&1; then
+              apt-get update
+              DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io docker-compose-v2 nginx certbot python3-certbot-nginx
+            fi
+            systemctl enable --now docker
+
             if [ ! -d /opt/apps/opket.uz/.git ]; then
               if [ -e /opt/apps/opket.uz ]; then
                 echo "The app path exists but is not a Git checkout; refusing to overwrite it." >&2
@@ -36,14 +46,6 @@ jobs:
 
             echo "Checking application..."
             curl -fsS -o /dev/null http://127.0.0.1:3000
-
-            if ! command -v apt-get >/dev/null 2>&1; then
-              echo "This deploy setup requires a Debian/Ubuntu server with apt-get." >&2
-              exit 1
-            fi
-
-            apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install -y nginx certbot python3-certbot-nginx
 
             site_file=/etc/nginx/sites-available/opket.uz
             enabled_file=/etc/nginx/sites-enabled/opket.uz
